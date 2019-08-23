@@ -73,13 +73,6 @@ struct RandomTypeSelector {
 	using type = typename TypeSelector<mymodulus<TIMEINT, N>::value, Args...>::type;
 };
 
-template <template <typename...> class Continuation,
-		 typename Devil,
-		 typename Head,
-		 typename Enable,
-		 typename... Tail>
-struct Filter_impl;
-
 template <template<typename...> class Continuation,
 		 typename Devil,
 		 typename Head,
@@ -88,22 +81,18 @@ struct Filter;
 
 template <template <typename...> class Continuation,
 		 typename Devil,
-		 typename Head,
 		 typename... Tail>
-struct Filter_impl<Continuation, Devil, Head,
-	typename std::enable_if< std::is_same<Devil, Head>::value >::type,
+struct Filter<Continuation, Devil, Devil,
 	Tail...>
 {
-	using type = Continuation<Tail...>;
+	using type = typename Filter<Continuation, Devil, Tail...>::type;
 };
 
 template <template <typename...> class Continuation,
 		 typename Devil,
 		 typename Head,
 		 typename... Tail>
-struct Filter_impl<Continuation, Devil, Head,
-	typename std::enable_if< !std::is_same<Devil, Head>::value >::type,
-	Tail...>
+struct Filter
 {
 	template <typename... Elements>
 	using SubCont = Continuation<Head, Elements...>;
@@ -112,53 +101,30 @@ struct Filter_impl<Continuation, Devil, Head,
 };
 
 template <template <typename...> class Continuation,
-		 typename Devil,
-		 typename Head>
-struct Filter_impl<Continuation, Devil, Head, 
-	typename std::enable_if< std::is_same<Devil, Head>::value >::type
-> {
+		 typename Devil>
+struct Filter<Continuation, Devil, Devil> {
 	using type = Continuation<>;
 };
 
 template <template <typename...> class Continuation,
 		 typename Devil,
 		 typename Head>
-struct Filter_impl<Continuation, Devil, Head, 
-	typename std::enable_if< !std::is_same<Devil, Head>::value >::type
-> {
+struct Filter<Continuation, Devil, Head> {
 	using type = Continuation<Head>;
 };
 
-template <template <typename...> class Continuation,
-		 typename Devil,
-		 typename Head,
-		 typename... Tail>
-struct Filter : public Filter_impl<Continuation, Devil, Head, void, Tail...> {};
-
+/* Not sure how to make this work with empty list of types
+ * The below is my best guess so far but it doesn't work
 template <template <typename...> class Continuation,
 		 typename Devil>
 struct Filter<Continuation, Devil, void> {
 	using type = Continuation<>;
-};
+}
+Filter<tuple, float>::type tup2;
+ */
 
-Filter<tuple, float, float, float, float>::type tup;
-int i = tup;
-
-//template <template <typename...> Continuation, typename Devil, typename... Elements>
-//struct Filter {
-//};
-//
-//template <template <typename...> Continuation, typename Devil, typename Head, typename... Tail>
-//using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Head, Tail...>;
-//
-//template <template <typename...> Continuation, typename Devil, typename... Tail>
-//using Filter<Continuation, Devil, Devil, Tail...> = Filter<Continuation, Devil, Tail...>;
-//
-//template <template <typename...> Continuation, typename Devil, typename Head>
-//using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Tail...>;
-//
-//template <template <typename...> Continuation, typename Devil, typename Head>
-//using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Tail...>;
+/* This creates a tuple<int, double> because floats are removed from the list */
+Filter<tuple, float, float, float, float, int, double, float>::type tup;
 
 struct Base {
 	virtual string getName() { return "Base"; }
