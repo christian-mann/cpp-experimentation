@@ -29,6 +29,12 @@ struct RandomCreator {
 	(int) (s[6] * 10 + s[7])
 #define TIMEINT (TIMEsINT(__TIME__) + __LINE__)
 
+template <int Big, int Small>
+struct mymodulus {
+	static_assert(Small != 0, "Tried to take something mod 0");
+	static const int value = Big % Small;
+};
+
 template <typename T, int which, T... args>
 struct Selector;
 
@@ -61,33 +67,98 @@ struct TypeSelector<0, head, tail...> {
 	using type = head;
 };
 
-template <int Big, int Small>
-struct mymodulus {
-	static_assert(Small != 0, "Tried to take something mod 0");
-	static const int value = Big % Small;
-};
-
 template <typename... Args>
 struct RandomTypeSelector {
 	static const int N = sizeof...(Args);
 	using type = typename TypeSelector<mymodulus<TIMEINT, N>::value, Args...>::type;
 };
 
-template <template <typename...> Continuation, typename Devil, typename... Elements>
-struct Filter {
+template <template <typename...> class Continuation,
+		 typename Devil,
+		 typename Head,
+		 typename Enable,
+		 typename... Tail>
+struct Filter_impl;
+
+template <template<typename...> class Continuation,
+		 typename Devil,
+		 typename Head,
+		 typename... Tail>
+struct Filter;
+
+template <template <typename...> class Continuation,
+		 typename Devil,
+		 typename Head,
+		 typename... Tail>
+struct Filter_impl<Continuation, Devil, Head,
+	typename std::enable_if< std::is_same<Devil, Head>::value >::type,
+	Tail...>
+{
+	using type = Continuation<Tail...>;
 };
 
-template <template <typename...> Continuation, typename Devil, typename Head, typename... Tail>
-using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Head, Tail...>;
+template <template <typename...> class Continuation,
+		 typename Devil,
+		 typename Head,
+		 typename... Tail>
+struct Filter_impl<Continuation, Devil, Head,
+	typename std::enable_if< !std::is_same<Devil, Head>::value >::type,
+	Tail...>
+{
+	template <typename... Elements>
+	using SubCont = Continuation<Head, Elements...>;
 
-template <template <typename...> Continuation, typename Devil, typename... Tail>
-using Filter<Continuation, Devil, Devil, Tail...> = Filter<Continuation, Devil, Tail...>;
+	using type = typename Filter<SubCont, Devil, Tail...>::type;
+};
 
-template <template <typename...> Continuation, typename Devil, typename Head>
-using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Tail...>;
+template <template <typename...> class Continuation,
+		 typename Devil,
+		 typename Head>
+struct Filter_impl<Continuation, Devil, Head, 
+	typename std::enable_if< std::is_same<Devil, Head>::value >::type
+> {
+	using type = Continuation<>;
+};
 
-template <template <typename...> Continuation, typename Devil, typename Head>
-using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Tail...>;
+template <template <typename...> class Continuation,
+		 typename Devil,
+		 typename Head>
+struct Filter_impl<Continuation, Devil, Head, 
+	typename std::enable_if< !std::is_same<Devil, Head>::value >::type
+> {
+	using type = Continuation<Head>;
+};
+
+template <template <typename...> class Continuation,
+		 typename Devil,
+		 typename Head,
+		 typename... Tail>
+struct Filter : public Filter_impl<Continuation, Devil, Head, void, Tail...> {};
+
+template <template <typename...> class Continuation,
+		 typename Devil>
+struct Filter<Continuation, Devil, void> {
+	using type = Continuation<>;
+};
+
+Filter<tuple, float, float, float, float>::type tup;
+int i = tup;
+
+//template <template <typename...> Continuation, typename Devil, typename... Elements>
+//struct Filter {
+//};
+//
+//template <template <typename...> Continuation, typename Devil, typename Head, typename... Tail>
+//using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Head, Tail...>;
+//
+//template <template <typename...> Continuation, typename Devil, typename... Tail>
+//using Filter<Continuation, Devil, Devil, Tail...> = Filter<Continuation, Devil, Tail...>;
+//
+//template <template <typename...> Continuation, typename Devil, typename Head>
+//using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Tail...>;
+//
+//template <template <typename...> Continuation, typename Devil, typename Head>
+//using Filter<Continuation, Devil, Head, Tail...> = Filter<Continuation, Devil, Tail...>;
 
 struct Base {
 	virtual string getName() { return "Base"; }
